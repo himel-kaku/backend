@@ -1,0 +1,244 @@
+CREATE TABLE department (
+    dept_id INT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    dept_code VARCHAR(20) UNIQUE NOT NULL,
+    building_name VARCHAR(100)
+);
+
+CREATE TABLE student (
+    student_id INT PRIMARY KEY,
+    stu_name VARCHAR(100) NOT NULL,
+    level INT,
+    term INT,
+    role VARCHAR(50),
+    department_id INT REFERENCES department(dept_id), -- Fixed reference
+    password VARCHAR(25)
+);
+
+CREATE TABLE teacher (
+    teacher_id INT PRIMARY KEY,
+    teacher_name VARCHAR(100) NOT NULL,
+    department_id INT REFERENCES department(dept_id), -- Fixed reference
+    password VARCHAR(25)
+);
+
+CREATE TABLE course (
+    id SERIAL PRIMARY KEY,
+    course_code VARCHAR(20) UNIQUE NOT NULL,
+    course_title VARCHAR(100) NOT NULL,
+    course_type VARCHAR(50),
+    department_id INT REFERENCES department(dept_id) -- Fixed reference
+);
+
+CREATE TABLE student_course (
+    student_id INT REFERENCES student(student_id), -- Fixed reference
+    course_id INT REFERENCES course(id),
+    section VARCHAR(10),
+    PRIMARY KEY (student_id, course_id)
+);
+
+
+-- TABLE course and teacher
+CREATE TABLE course_teacher (
+    course_id INT REFERENCES course(id),
+    teacher_id INT REFERENCES teacher(teacher_id), -- Fixed reference
+    PRIMARY KEY (course_id, teacher_id)
+);
+
+-- Table: class_schedule
+CREATE TABLE class_schedule (
+    id SERIAL PRIMARY KEY,
+    course_id INT REFERENCES course(id) ON DELETE CASCADE,
+    section VARCHAR(5),
+    date DATE,
+    start_time TIME,
+    end_time TIME,
+    building_name VARCHAR(50),
+    room VARCHAR(25),
+    is_regular SMALLINT DEFAULT 1
+);
+
+-- Table: exam_schedule
+CREATE TABLE exam_schedule (
+    id SERIAL PRIMARY KEY,
+    course_id INT REFERENCES course(id) ON DELETE CASCADE,
+    section VARCHAR(5),
+    date DATE,
+    start_time TIME,
+    end_time TIME,
+    building_name VARCHAR(50),
+    room VARCHAR(25),
+    exam_description TEXT
+);
+
+-- Table: class_plots
+CREATE TABLE class_plots (
+    id SERIAL PRIMARY KEY,
+    course_id INT REFERENCES course(id) ON DELETE CASCADE,
+    section VARCHAR(5),
+    date DATE
+);
+
+-- Table: exam_plots
+CREATE TABLE exam_plots (
+    id SERIAL PRIMARY KEY,
+    course_id INT REFERENCES course(id) ON DELETE CASCADE,
+    section VARCHAR(5),
+    date DATE
+);
+
+
+-- -- Table: uploaded_files
+CREATE TABLE uploaded_files (
+    id SERIAL PRIMARY KEY,
+    file_name VARCHAR(200) NOT NULL,
+    file_path VARCHAR(500) NOT NULL,
+    uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    plot_id INT NOT NULL,       -- refers to class_plots.id or exam_plots.id
+    is_plot_class SMALLINT NOT NULL CHECK (is_plot_class IN (0, 1)) -- 1 = class, 0 = exam
+);
+
+
+
+-- push data 
+
+-- department
+    -- INSERT INTO department (dept_id, name, dept_code, building_name) VALUES
+    -- (5, 'Computer Science and Engineering', 'CSE', 'ECE Building'),
+    -- (4, 'Electrical Engineering', 'EEE', 'ECE Building'),
+    -- (17, 'Mathematics', 'MATH', 'Old Academic Building'),
+    -- (7, 'Mechanical Engineering' , 'ME' , 'Main campus'),
+    -- (15, 'Chemistry', 'CHEM' , 'Old Academic Building');
+
+-- course
+    level: 1, term: 2
+    ME-165
+    CHEM-113
+    CSE-107
+    CSE-105
+    CSE-106
+    MATH-143
+    CHEM-118
+    CSE-108
+    ME-174
+
+    level: 2, term: 1
+    CSE-205
+    CSE-206
+    CSE-207
+    CSE-208
+    CSE-215
+    CSE-216
+    EEE-263
+    EEE-264
+    MATH-241
+
+
+    INSERT INTO course (course_code, course_title, course_type, department_id) VALUES
+    -- CSE Courses (Dept ID: 5)
+    ('CSE-107', 'Discrete Mathematics', 'theory', 5),
+    ('CSE-105', 'Structured Programming Language', 'theory', 5),
+    ('CSE-106', 'Structured Programming Language Sessional', 'sessional', 5),
+    ('CSE-108', 'Discrete Mathematics Sessional', 'sessional', 5),
+    ('CSE-205', 'Digital Logic Design', 'theory', 5),
+    ('CSE-206', 'Digital Logic Design Sessional', 'sessional', 5),
+    ('CSE-207', 'Data Structures', 'theory', 5),
+    ('CSE-208', 'Data Structures Sessional', 'sessional', 5),
+    ('CSE-215', 'Object Oriented Programming Language', 'theory', 5),
+    ('CSE-216', 'Object Oriented Programming Sessional', 'sessional', 5),
+
+    -- EEE Courses (Dept ID: 4)
+    ('EEE-263', 'Electrical Circuits', 'theory', 4),
+    ('EEE-264', 'Electrical Circuits Lab', 'sessional', 4),
+
+    -- MATH Courses (Dept ID: 17)
+    ('MATH-143', 'Calculus and Analytical Geometry', 'theory', 17),
+    ('MATH-241', 'Complex Variables and Fourier Analysis', 'theory', 17),
+
+    -- ME Courses (Dept ID: 7)
+    ('ME-165', 'Basic Mechanical Engineering', 'theory', 7),
+    ('ME-174', 'Mechanical Drawing Sessional', 'sessional', 7),
+
+    -- CHEM Courses (Dept ID: 15)
+    ('CHEM-113', 'General Chemistry', 'theory', 15),
+    ('CHEM-118', 'Chemistry Sessional', 'sessional', 15);
+
+-- student 
+    INSERT INTO student (student_id, stu_name, level, term, role, department_id, password) VALUES
+    -- CSE Students (Dept ID: 5)
+    (2305100, 'Alice Johnson', 2, 1, 'student', 5, 'pass_alice123'),
+    (2305042, 'Bob Smith', 2, 1, 'CR', 5, 'bob_secure42'),
+    (2005088, 'Charlie Davis', 4, 2, 'student', 5, 'charlie_p88'),
+    (2205001, 'Liam Carter', 2, 2, 'cr', 5, 'liam_freshman'),
+    (2205012, 'Sophia Nguyen', 2, 2, 'student', 5, 'sophia_pass'),
+    (2405045, 'Jackson White', 1, 2, 'student', 5, 'jax_secure'),
+    (2405133, 'Mason Hall', 1, 2, 'student', 5, 'mason_h33'),
+    (2405099, 'Isabella Martinez', 1, 2, 'cr', 5, 'bella_rep'),
+    (2405021, 'Ethan Hunt', 1, 2, 'student', 5, 'mi_impossible'),
+    (2405067, 'Mia Thompson', 1, 2, 'student', 5, 'mia_t_2020'),
+
+    -- EEE Students (Dept ID: 4)
+    (2104015, 'Diana Prince', 2, 1, 'student', 4, 'wonder_eee15'),
+    (2204003, 'Evan Wright', 1, 2, 'student', 4, 'evan_pass03'),
+
+    -- ME Students (Dept ID: 7)
+    (2107022, 'Fiona Gallagher', 2, 1, 'student', 7, 'fiona_me22'),
+    (2007055, 'George Miller', 4, 2, 'student', 7, 'george_old55');
+
+-- teacher
+
+    INSERT INTO teacher (teacher_id, teacher_name, department_id, password) VALUES
+    -- CSE Faculty (Dept ID: 5)
+    (5001, 'Dr. Ariful Islam', 5, 'cse_ari_501'),
+    (5002, 'Prof. Sarah Jahan', 5, 'sarah_j_cse'),
+    (5003, 'Dr. Tanvir Rahman', 5, 'tanvir_99'),
+    (5004, 'Ms. Nusrat Sharmin', 5, 'nusrat_teach'),
+    (5005, 'Mr. Amitav Ghosh', 5, 'amit_cse05'),
+    (5006, 'Dr. Zakir Hossain', 5, 'zakir_h_88'),
+
+    -- EEE Faculty (Dept ID: 4)
+    (4001, 'Dr. Michael Faraday', 4, 'electromag1'),
+    (4002, 'Prof. Nikola Tesla', 4, 'alternating_c'),
+
+    -- MATH Faculty (Dept ID: 17)
+    (17001, 'Dr. Ada Lovelace', 17, 'first_prog_17'),
+    (17002, 'Prof. Alan Turing', 17, 'enigma_solve'),
+
+    -- ME Faculty (Dept ID: 7)
+    (7001, 'Dr. James Watt', 7, 'steam_engine7'),
+    (7002, 'Mr. Musfiquer Rahman', 7, 'mus_112')
+
+    -- CHEM Faculty (Dept ID: 15)
+    (15001, 'Dr. Marie Curie', 15, 'radium_99'),
+    (15002, 'Mr. Jalal Bepari', 15, '123_jalal');
+
+-- teacher-course 
+    INSERT INTO course_teacher (course_id, teacher_id) VALUES
+    -- CSE Courses (Dept 5)
+    (1, 5001), -- CSE-107 taught by Dr. Ariful Islam
+    (2, 5002), -- CSE-105 taught by Prof. Sarah Jahan
+    (3, 5003), -- CSE-106 taught by Dr. Tanvir Rahman
+    (4, 5004), -- CSE-108 taught by Ms. Nusrat Sharmin
+    (5, 5005), -- CSE-205 taught by Mr. Amitav Ghosh
+    (6, 5006), -- CSE-206 taught by Dr. Zakir Hossain
+    (7, 5001), -- CSE-207 taught by Dr. Ariful Islam
+    (8, 5002), -- CSE-208 taught by Prof. Sarah Jahan
+    (9, 5003), -- CSE-215 taught by Dr. Tanvir Rahman
+    (10, 5004), -- CSE-216 taught by Ms. Nusrat Sharmin
+
+    -- EEE Courses (Dept 4)
+    (11, 4001), -- EEE-263 taught by Dr. Michael Faraday
+    (12, 4002), -- EEE-264 taught by Prof. Nikola Tesla
+
+    -- MATH Courses (Dept 17)
+    (13, 17001), -- MATH-143 taught by Dr. Ada Lovelace
+    (14, 17002), -- MATH-241 taught by Prof. Alan Turing
+
+    -- ME Courses (Dept 7)
+    (15, 7001), -- ME-165 taught by Dr. James Watt
+    (16, 7002), -- ME-174 taught by Mr. Musfiquer Rahman
+
+    -- CHEM Courses (Dept 15)
+    (17, 15001), -- CHEM-113 taught by Dr. Marie Curie
+    (18, 15002); -- CHEM-118 taught by Mr. Jalal Bepari
+
