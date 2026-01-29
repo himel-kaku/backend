@@ -1,0 +1,15 @@
+How it works for the student:
+Step 1 (Already done):  
+    Student logs in and gets their course list (e.g., CSE-105 has id: 2).
+
+Step 2:
+    Student clicks CSE-105. The frontend calls GET /api/user/course-materials/2(course_id)
+    The server checks their section (let's say 'A').
+    It returns all dates (plots) for Section A.
+    Each date contains a list of files (e.g., Lecture_Slides.pdf)[not actual files, just metadeta of the files]
+
+Step 3:
+    Student clicks Lecture_Slides.pdf. The frontend calls GET /api/user/download/10.
+    The server looks up the real path on the hard drive.
+    It streams the file to the student's browser.
+

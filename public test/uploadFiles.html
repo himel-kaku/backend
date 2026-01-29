@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Class File Upload Tester</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; max-width: 500px; margin: auto; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; font-weight: bold; margin-bottom: 5px; }
+        input[type="text"], input[type="file"] { width: 100%; padding: 8px; box-sizing: border-box; }
+        button { background: #007bff; color: white; border: none; padding: 10px 15px; cursor: pointer; border-radius: 4px; }
+        #response { margin-top: 20px; padding: 10px; border: 1px solid #ccc; background: #f9f9f9; white-space: pre-wrap; font-family: monospace; }
+    </style>
+</head>
+<body>
+
+    <h2>Upload Tester</h2>
+    
+    <div class="form-group">
+        <label>JWT Token (Paste from Login):</label>
+        <input type="text" id="token" placeholder="Bearer eyJhbGciOiJIUzI1...">
+    </div>
+
+    <div class="form-group">
+        <label>Plot ID:</label>
+        <input type="text" id="plot_id" value="1">
+    </div>
+
+    <div class="form-group">
+        <label>Select File (PDF):</label>
+        <input type="file" id="fileInput">
+    </div>
+
+    <button onclick="handleUpload()">Upload to Server</button>
+
+    <div id="response">Response will appear here...</div>
+
+    <script>
+        async function handleUpload() {
+            const token = document.getElementById('token').value;
+            const plot_id = document.getElementById('plot_id').value;
+            const fileInput = document.getElementById('fileInput');
+            const responseDiv = document.getElementById('response');
+
+            if (!fileInput.files[0] || !token) {
+                alert("Please select a file and provide a token!");
+                return;
+            }
+
+            // Create Form Data
+            const formData = new FormData();
+            formData.append('plot_id', plot_id);
+            formData.append('file', fileInput.files[0]);
+
+            responseDiv.innerText = "Uploading...";
+
+            try {
+                const response = await fetch('http://localhost:3000/api/upload/class-files', {
+                    method: 'POST',
+                    headers: {
+                        // IMPORTANT: Don't set Content-Type header manually when using FormData
+                        'Authorization': token.startsWith('Bearer ') ? token : `Bearer ${token}`
+                    },
+                    body: formData
+                });
+
+                const data = await response.json();
+                responseDiv.innerText = JSON.stringify(data, null, 2);
+            } catch (error) {
+                responseDiv.innerText = "Error: " + error.message;
+            }
+        }
+    </script>
+</body>
+</html>
+

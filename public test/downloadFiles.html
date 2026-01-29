@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>University Portal Tester</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; display: grid; grid-template-columns: 1fr 1fr; gap: 20px; padding: 20px; background-color: #f4f7f6; }
+        .card { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); border-top: 4px solid #007bff; }
+        h2 { margin-top: 0; color: #333; font-size: 1.2rem; }
+        input, button { width: 100%; padding: 10px; margin: 5px 0; box-sizing: border-box; }
+        button { background: #007bff; color: white; border: none; cursor: pointer; font-weight: bold; }
+        button:hover { background: #0056b3; }
+        .list-item { padding: 10px; border-bottom: 1px solid #eee; cursor: pointer; transition: 0.2s; }
+        .list-item:hover { background: #f0f7ff; color: #007bff; }
+        .file-link { color: #28a745; text-decoration: underline; cursor: pointer; display: block; margin: 5px 0; }
+        pre { background: #222; color: #0f0; padding: 10px; font-size: 12px; overflow: auto; max-height: 150px; }
+    </style>
+</head>
+<body>
+
+    <div class="card" id="part1">
+        <h2>1. Authentication</h2>
+        <input type="text" id="userId" placeholder="Student ID (e.g. 2105001)">
+        <input type="password" id="password" placeholder="Password">
+        <button onclick="login()">Login</button>
+        <p id="authStatus">Status: Not Logged In</p>
+    </div>
+
+    <div class="card" id="part2">
+        <h2>2. My Enrolled Courses</h2>
+        <button onclick="fetchCourses()">Load Courses</button>
+        <div id="courseList"></div>
+    </div>
+
+    <div class="card" id="part3">
+        <h2>3. Class Plots & File Metadata</h2>
+        <div id="plotList">Select a course to see dates and files...</div>
+    </div>
+
+    <div class="card" id="part4">
+        <h2>4. System Logs / Status</h2>
+        <pre id="logs">Waiting for actions...</pre>
+    </div>
+
+    <script>
+        let jwtToken = "";
+        const API_BASE = "http://localhost:3000/api";
+
+        function log(msg) {
+            const logs = document.getElementById('logs');
+            logs.innerText = `> ${msg}\n` + logs.innerText;
+        }
+
+        // --- PART 1: LOGIN ---
+        async function login() {
+            const id = document.getElementById('userId').value;
+            const pass = document.getElementById('password').value;
+            try {
+                const res = await fetch(`${API_BASE}/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: id, password: pass })
+                });
+                const data = await res.json();
+                if(data.success) {
+                    jwtToken = data.token;
+                    document.getElementById('authStatus').innerText = "Status: Logged In ✅";
+                    log("Login Successful!");
+                } else {
+                    alert("Login Failed: " + data.message);
+                }
+            } catch (err) { log("Login Error: " + err.message); }
+        }
+
+        // --- PART 2: GET COURSES ---
+        async function fetchCourses() {
+            if(!jwtToken) return alert("Login first!");
+            try {
+                const res = await fetch(`${API_BASE}/user/my-courses`, {
+                    headers: { 'Authorization': `Bearer ${jwtToken}` }
+                });
+                const data = await res.json();
+                const container = document.getElementById('courseList');
+                container.innerHTML = "";
+                data.courses.forEach(c => {
+                    const div = document.createElement('div');
+                    div.className = "list-item";
+                    div.innerText = `${c.code}: ${c.title}`;
+                    div.onclick = () => fetchMaterials(c.id);
+                    container.appendChild(div);
+                });
+                log("Courses Loaded.");
+            } catch (err) { log("Fetch Courses Error: " + err.message); }
+        }
+
+        // --- PART 3: GET PLOTS & FILES ---
+        async function fetchMaterials(courseId) {
+            log(`Fetching materials for Course ID: ${courseId}...`);
+            try {
+                const res = await fetch(`${API_BASE}/user/course-materials/${courseId}`, {
+                    headers: { 'Authorization': `Bearer ${jwtToken}` }
+                });
+                const data = await res.json();
+                const container = document.getElementById('plotList');
+                container.innerHTML = "";
+
+                data.plots.forEach(plot => {
+                    const plotDiv = document.createElement('div');
+                    plotDiv.innerHTML = `<strong>Date: ${new Date(plot.date).toLocaleDateString()}</strong>`;
+                    
+                    plot.files.forEach(file => {
+                        const fileLink = document.createElement('span');
+                        fileLink.className = "file-link";
+                        fileLink.innerText = `📄 ${file.file_name}`;
+                        fileLink.onclick = () => downloadFile(file.file_id);
+                        console.log(file.file_id);
+                        plotDiv.appendChild(fileLink);
+                    });
+                    container.appendChild(plotDiv);
+                    container.appendChild(document.createElement('hr'));
+                });
+            } catch (err) { log("Fetch Materials Error: " + err.message); }
+        }
+
+        // --- PART 4: DOWNLOAD FILE ---
+        async function downloadFile(fileId) {
+            log(`Attempting download for File ID: ${fileId}`);
+            try {
+                // We use window.open or a hidden anchor tag for the actual download
+                const downloadUrl = `${API_BASE}/download/${fileId}`;
+                
+                // Since our download route requires Auth, we must fetch with headers 
+                // and then create a blob URL, or pass the token via query param (less secure).
+                // Here is the Blob method to keep the Auth header:
+                const res = await fetch(downloadUrl, {
+                    headers: { 'Authorization': `Bearer ${jwtToken}` }
+                });
+                const blob = await res.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = ""; // Filename will be handled by Content-Disposition header
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                log("Download started successfully.");
+            } catch (err) { log("Download Error: " + err.message); }
+        }
+    </script>
+</body>
+</html>

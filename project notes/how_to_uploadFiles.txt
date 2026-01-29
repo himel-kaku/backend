@@ -1,0 +1,36 @@
+ <script>
+        async function handleUpload() {
+            const token = document.getElementById('token').value;-- user token
+            const plot_id = document.getElementById('plot_id').value; -- class plots id
+            const fileInput = document.getElementById('fileInput');-- uploaded file in input tag
+            const responseDiv = document.getElementById('response');
+
+            if (!fileInput.files[0] || !token) {
+                alert("Please select a file and provide a token!");
+                return;
+            }
+
+            // Create Form Data
+            const formData = new FormData();
+            formData.append('plot_id', plot_id);
+            formData.append('file', fileInput.files[0]);
+
+            responseDiv.innerText = "Uploading...";
+
+            try {
+                const response = await fetch('http://localhost:3000/api/upload/class-files', {
+                    method: 'POST',
+                    headers: {
+                        // IMPORTANT: Don't set Content-Type header manually when using FormData
+                        'Authorization': token.startsWith('Bearer ') ? token : `Bearer ${token}`
+                    },
+                    body: formData
+                });
+
+                const data = await response.json();
+                responseDiv.innerText = JSON.stringify(data, null, 2);
+            } catch (error) {
+                responseDiv.innerText = "Error: " + error.message;
+            }
+        }
+    </script>

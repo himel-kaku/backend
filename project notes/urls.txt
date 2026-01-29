@@ -1,0 +1,11 @@
+
+
+auth: '/api/auth/login', [post]
+profile: '/api/user/profile',
+courses: '/api/user/my-courses'
+class-routine: '/api/user/class-routine'
+exam-routine: 'api/user/exam-routine'
+course-materials: 'api/user/course-materials/:courseId' (get all class-plots of course using courseId and all files name just)
+
+uploadFiles: 'api/upload/class-files' [post, use(input tag's name: file)] class plots file upload
+downloadFiles: 'api/download/fileId' [get] 

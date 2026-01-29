@@ -4,6 +4,8 @@ require('dotenv').config();
 
 const authRoutes = require('./routes/authRoutes');
 const userRoutes = require('./routes/userRoutes');
+const uploadRoutes = require('./routes/uploadRoutes');
+const downloadRoutes = require('./routes/downloadRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -28,6 +30,8 @@ app.get('/', (req, res) => {
 
 app.use('/api/auth', authRoutes);
 app.use('/api/user', userRoutes);
+app.use('/api/upload', uploadRoutes);
+app.use('/api/download', downloadRoutes);
 
 // 404 handler
 app.use((req, res) => {
