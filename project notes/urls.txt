@@ -1,11 +1,30 @@
 
 
-auth: '/api/auth/login', [post]
-profile: '/api/user/profile',
-courses: '/api/user/my-courses'
-class-routine: '/api/user/class-routine'
-exam-routine: 'api/user/exam-routine'
-course-materials: 'api/user/course-materials/:courseId' (get all class-plots of course using courseId and all files name just)
+auth: '/api/auth/login', [post, send id and password] 
+profile: '/api/user/profile', [get]
+courses: '/api/user/my-courses' [get]
+class-routine: '/api/user/class-routine' [get]
+exam-routine: 'api/user/exam-routine' [get]
+course-materials: 'api/user/course-materials/:courseId' (get all class-plots of the course using courseId and all files name just)
+exam-materials: 'api/user/exam-materials/:examId' // send exam schedule id and get the exam plots with all uploaded files informaton(not the raw file just name)
+class-materials: 'api/user/class-materials/:classScheduleId' // send class schedule id and get its corresponding class plot
 
 uploadFiles: 'api/upload/class-files' [post, use(input tag's name: file)] class plots file upload
+        // sending plot_id and file 
+            const formData = new FormData();
+            formData.append('plot_id', plot_id);
+            formData.append('file', fileInput.files[0]);
+
+
+                const response = await fetch('http://localhost:3000/api/upload/class-files', {
+                    method: 'POST',
+                    headers: {
+                        // IMPORTANT: Don't set Content-Type header manually when using FormData
+                        'Authorization': token.startsWith('Bearer ') ? token : `Bearer ${token}`
+                    },
+                    body: formData
+                });
+
+uploadFiles: 'api/upload/exam-files' [post, send exam_plot_id and file]
+
 downloadFiles: 'api/download/fileId' [get] 

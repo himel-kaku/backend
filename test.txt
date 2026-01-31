@@ -1,0 +1,324 @@
+I have done my backend server with express. now I need to create frontend server using React. 
+Bellow the overview of my project: 
+** database:
+
+
+ TABLE department (
+    dept_id INT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    dept_code VARCHAR(20) UNIQUE NOT NULL,
+    building_name VARCHAR(100)
+);
+
+ TABLE student (
+    student_id INT PRIMARY KEY,
+    stu_name VARCHAR(100) NOT NULL,
+    level INT,
+    term INT,
+    role VARCHAR(50),
+    department_id INT REFERENCES department(dept_id), -- Fixed reference
+    password VARCHAR(25)
+);
+
+ TABLE teacher (
+    teacher_id INT PRIMARY KEY,
+    teacher_name VARCHAR(100) NOT NULL,
+    department_id INT REFERENCES department(dept_id), -- Fixed reference
+    password VARCHAR(25)
+);
+
+ TABLE course (
+    id SERIAL PRIMARY KEY,
+    course_code VARCHAR(20) UNIQUE NOT NULL,
+    course_title VARCHAR(100) NOT NULL,
+    course_type VARCHAR(50),
+    department_id INT REFERENCES department(dept_id) -- Fixed reference
+);
+
+ TABLE student_course (
+    student_id INT REFERENCES student(student_id), -- Fixed reference
+    course_id INT REFERENCES course(id),
+    section VARCHAR(10),
+    PRIMARY KEY (student_id, course_id)
+);
+
+
+-- TABLE course and teacher
+ TABLE course_teacher (
+    course_id INT REFERENCES course(id),
+    teacher_id INT REFERENCES teacher(teacher_id), -- Fixed reference
+    PRIMARY KEY (course_id, teacher_id)
+);
+
+-- Table: class_schedule for showing a class routine; each schedule is a block of routine. like a date block of calender
+ TABLE class_schedule (
+    id SERIAL PRIMARY KEY,
+    course_id INT REFERENCES course(id) ON DELETE CASCADE,
+    section VARCHAR(5),
+    date DATE,
+    start_time TIME,
+    end_time TIME,
+    building_name VARCHAR(50),
+    room VARCHAR(25),
+    is_regular SMALLINT DEFAULT 1
+);
+
+-- Table: exam_schedule; I will keep a rows of dates; and where each date will contains some blocks of exam schedule
+ TABLE exam_schedule (
+    id SERIAL PRIMARY KEY,
+    course_id INT REFERENCES course(id) ON DELETE CASCADE,
+    section VARCHAR(5),
+    date DATE,
+    start_time TIME,
+    end_time TIME,
+    building_name VARCHAR(50),
+    room VARCHAR(25),
+    exam_description TEXT
+);
+
+-- Table: class_plots; suppose, I my website started at 25january, then I will keep plots from 25jan to today date for each course
+ TABLE class_plots (
+    id SERIAL PRIMARY KEY,
+    course_id INT REFERENCES course(id) ON DELETE CASCADE,
+    section VARCHAR(5),
+    date DATE
+);
+
+-- Table: exam_plots; for storing past and present exam files information
+ TABLE exam_plots (
+    id SERIAL PRIMARY KEY,
+    course_id INT REFERENCES course(id) ON DELETE CASCADE,
+    section VARCHAR(5),
+    date DATE
+);
+
+
+-- -- Table: uploaded_files; track which files are uploaded on a specific plot [class_plot or exam_plot]
+ TABLE uploaded_files (
+    id SERIAL PRIMARY KEY,
+    file_name VARCHAR(200) NOT NULL,
+    file_path VARCHAR(500) NOT NULL,
+    uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    plot_id INT NOT NULL,       -- refers to class_plots.id or exam_plots.id
+    is_plot_class SMALLINT NOT NULL CHECK (is_plot_class IN (0, 1)) -- 1 = class, 0 = exam
+);
+
+** urls:
+auth: '/api/auth/login', [post, send id and password] 
+profile: '/api/user/profile', [get]
+courses: '/api/user/my-courses' [get]
+class-routine: '/api/user/class-routine' [get]
+exam-routine: 'api/user/exam-routine' [get]
+course-materials: 'api/user/course-materials/:courseId' (get all class-plots of the course using courseId and all files name just)
+exam-materials: 'api/user/exam-materials/:examId' // send exam schedule id and get the exam plots with all uploaded files informaton(not the raw file just name)
+
+uploadClassFiles: 'api/upload/class-files' [post, use(input tag's name: file)]
+uploadExamFiles: 'api/upload/exam-files' [post, send exam_plot_id and file]
+
+downloadFiles: 'api/download/fileId' [get] 
+
+
+what pages will be shown:
+1. Login page:
+url: auth: '/api/auth/login', [post, send id and password] 
+response: get a json file of student or teacher information[
+{
+  "success": true,
+  "message": "Login successful",
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjI0MDUwOTksInJvbGUiOiJzdHVkZW50IiwiaWF0IjoxNzY5NzU3NDkyLCJleHAiOjE3Njk4NDM4OTJ9.Mi71pnr6CSJ7Qhq4NWLK48ADoqSXwQkDZ0fVRX8YuxU",
+  "user": {
+    "id": 2405099,
+    "name": "Isabella Martinez",
+    "role": "student",
+    "department": "Computer Science and Engineering",
+    "departmentCode": "CSE",
+    "level": 1,
+    "term": 2,
+    "studentRole": "cr"
+  }
+}
+for teacher reponse:
+{
+  "success": true,
+  "message": "Login successful",
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjUwMDEsInJvbGUiOiJ0ZWFjaGVyIiwiaWF0IjoxNzY5NzU4MDA5LCJleHAiOjE3Njk4NDQ0MDl9.HOjStTCYYL4aJFZjDLLP5Du__Wgd9rv9DGywEn_i8Ho",
+  "user": {
+    "id": 5001,
+    "name": "Dr. Ariful Islam",
+    "role": "teacher",
+    "department": "Computer Science and Engineering",
+    "departmentCode": "CSE"
+  }
+}
+]
+after getting response show the profile and and extra 5 options[courses, class routine, exam routine, class resource, exam resource]
+
+
+2. courses:
+url: '/api/user/my-courses' [get request, must send jwt token in reqeust header in "Bearer token" format ]
+response: 
+{
+  "success": true,
+  "courses": [
+    {
+      "id": 17,
+      "code": "CHEM-113",
+      "title": "General Chemistry",
+      "type": "theory",
+      "section": "A",
+      "department": {
+        "name": "Chemistry",
+        "code": "CHEM"
+      }
+    },
+    {
+      "id": 18,
+      "code": "CHEM-118",
+      "title": "Chemistry Sessional",
+      "type": "sessional",
+      "section": "A",
+      "department": {
+        "name": "Chemistry",
+        "code": "CHEM"
+      }
+    } ]
+}
+show list of the courses
+
+
+3. class routine:
+url: class-routine: '/api/user/class-routine' [get request, token in header ]
+response: 
+{
+  "success": true,
+  "count": 19,
+  "routine": [
+    {
+      "id": 1,
+      "courseCode": "ME-165",
+      "courseTitle": "Basic Mechanical Engineering",
+      "section": "A",
+      "date": "2025-01-03T18:00:00.000Z",
+      "day": "Saturday",
+      "startTime": "09:00:00",
+      "endTime": "10:00:00",
+      "location": "ECE Building, Room 108",
+      "isRegular": true
+    },
+    {
+      "id": 2,
+      "courseCode": "CHEM-113",
+      "courseTitle": "General Chemistry",
+      "section": "A",
+      "date": "2025-01-03T18:00:00.000Z",
+      "day": "Saturday",
+      "startTime": "10:00:00",
+      "endTime": "11:00:00",
+      "location": "ECE Building, Room 108",
+      "isRegular": true
+    }
+]
+}
+-> I will give a overview of class routine how will be look like. just place the each class schedule in its corresponding time and date block. 
+-> routine will be shown today and upcoming 6days, a week from today.
+-> when someone click a routine block, a request will be send using url: 'api/user/class-materials/:class_scheduleId and get a response of all files uploaded on this schedule(basically server find its corresponding class plots and return all uploaded files data(not the actual file)] and student with role="cr" or teachers also be able to upload class file using [url: 'api/upload/class-files' [post, use(input tag's name: file)] class plots file upload
+        // sending plot_id and file 
+            const formData = new FormData();
+            formData.append('plot_id', plot_id);
+            formData.append('file', fileInput.files[0]);
+
+
+                const response = await fetch('http://localhost:3000/api/upload/class-files', {
+                    method: 'POST',
+                    headers: {
+                        // IMPORTANT: Don't set Content-Type header manually when using FormData
+                        'Authorization': token.startsWith('Bearer ') ? token : `Bearer ${token}`
+                    },
+                    body: formData
+                });], I have told you that server send the file information just, but when someone click the file show a option to download and get download using[ url: downloadFiles: 'api/download/fileId' [get request] ] , show this part making the class-routine blur and this part will occupy 80% total height and width.
+
+
+4. exam routine:
+url: exam-routine: 'api/user/exam-routine' [get]
+reponse: a json {
+  "success": true,
+  "count": 5,
+  "exams": [
+    {
+      "id": 1,
+      "courseCode": "CSE-105",
+      "courseTitle": "Structured Programming Language",
+      "section": "A",
+      "date": "2025-05-17T18:00:00.000Z",
+      "dateLabel": "Sunday , 18 May 2025",
+      "time": "10:00 - 13:00",
+      "venue": "ECE Building, Room Exam Hall 1",
+      "description": "Chapter 1,2"
+    },
+    {
+      "id": 2,
+      "courseCode": "CSE-107",
+      "courseTitle": "Discrete Mathematics",
+      "section": "A",
+      "date": "2025-05-21T18:00:00.000Z",
+      "dateLabel": "Thursday , 22 May 2025",
+      "time": "10:00 - 13:00",
+      "venue": "ECE Building, Room Exam Hall 1",
+      "description": "slides 1,2,3 till graph"
+    }]
+}
+I will give you a overview photo how exam-routine will be look like. 
+-> I will have rows of dates[a week from current day] and each date will contains some exam-schedules.
+-> when some click on schedule. I will show the exam details like location, descripton etc and also all uploaded files[using url: 'api/user/exam-materials/:examScheduleId' (which returns all details of uploaded files not raw file like class plots files) and here also give an download option. and anyone can upload files in exam block using url: uploadFiles: 'api/upload/exam-files' [post, send exam_plot_id and file]
+
+
+5. class resource:
+I will show a list of courses he or she taken [like left nav-bar] on right a blank page 
+when user click on the course, url: 'api/user/course-materials/:courseId' visited. get a list of class plots where each class plot contains all files uploaded on the that date of class plot and course.
+{
+    "success": true,
+    "course_id": "1",
+    "section": "A",
+    "plots": [
+        {
+            "plot_id": 1,
+            "date": "2026-01-19T18:00:00.000Z",
+            "files": [
+                {
+                    "file_id": 1,
+                    "file_name": "Pde-CT.pdf",
+                    "uploaded_at": "2026-01-29T04:34:45.643Z"
+                },
+                {
+                    "file_id": 5,
+                    "file_name": "hsc result pdf.pdf",
+                    "uploaded_at": "2026-01-30T03:18:40.747Z"
+                }
+            ]
+        },
+        {
+            "plot_id": 19,
+            "date": "2026-01-20T18:00:00.000Z",
+            "files": []
+        },
+        {
+            "plot_id": 37,
+            "date": "2026-01-21T18:00:00.000Z",
+            "files": []
+        }, ...
+    ]
+}
+-> here above json send only fine name and id.
+-> if need to download it,then use 'api/download/fileId' [ger request]
+
+
+6. exam resource:
+url: 'api/user/exams-resource' 
+response: all exam plots ordered by date 
+
+
+For now, I implement the website for only student. each student has role 'student' or 'cr'. 
+-> if cr then he can upload files for class plots 
+-> for exam plots both can upload exam files 
+
+now, give prompt to generate the frontend part using claude ai. cover all constraints and variable name strictly. 

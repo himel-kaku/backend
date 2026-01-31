@@ -4,7 +4,8 @@ const pool = require('../config/database');
 const login = async (req, res) => {
   try {
     const { id, password } = req.body;
-
+    console.log('Login attempt with ID:', id);
+    
     if (!id || !password) {
       return res.status(400).json({
         success: false,

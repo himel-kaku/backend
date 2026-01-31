@@ -102,6 +102,8 @@ const getMyCourses = async (req, res) => {
   try {
     const { userId, role } = req.user;
 
+    console.log(`Fetching courses for user ID: ${userId} with role: ${role}`);
+
     let query;
     let result;
 
@@ -189,6 +191,8 @@ const getClassRoutine = async (req, res) => {
     const { userId, role } = req.user;
     let query;
 
+    console.log(`Fetching class routine for user ID: ${userId} with role: ${role}`);
+
     if (role === 'student') {
       // Fetches schedule for courses where the student is enrolled IN their specific section
       query = `
@@ -196,6 +200,7 @@ const getClassRoutine = async (req, res) => {
           cs.id as schedule_id,
           c.course_code,
           c.course_title,
+          c.course_type,
           cs.section,
           cs.date,
           TO_CHAR(cs.date, 'Day') as day_of_week,
@@ -244,6 +249,7 @@ const getClassRoutine = async (req, res) => {
         id: item.schedule_id,
         courseCode: item.course_code,
         courseTitle: item.course_title,
+        courseType: item.course_type,
         section: item.section,
         date: item.date,
         day: item.day_of_week.trim(), // PostgreSQL pads 'Day' with spaces
@@ -268,6 +274,8 @@ const getExamRoutine = async (req, res) => {
   try {
     const { userId, role } = req.user;
     let query;
+
+    console.log(`Fetching exam routine for user ID: ${userId} with role: ${role}`);
 
     if (role === 'student') {
       // Fetches exam schedule for the specific courses and sections the student is enrolled in
@@ -327,7 +335,8 @@ const getExamRoutine = async (req, res) => {
         section: exam.section,
         date: exam.date,
         dateLabel: exam.formatted_date.replace(/\s+/g, ' ').trim(), // Clean up PG padding
-        time: `${exam.start_time.slice(0, 5)} - ${exam.end_time.slice(0, 5)}`,
+        startTime: exam.start_time.slice(0, 5),
+        endTime: exam.end_time.slice(0, 5),
         venue: `${exam.building_name}, Room ${exam.room}`,
         description: exam.exam_description
       }))
