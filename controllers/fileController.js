@@ -1,8 +1,8 @@
+const { get } = require('http');
 const pool = require('../config/database');
 const path = require('path');
 
 
-// A generic upload handler creator
 const handleFileUpload = (isPlotClass) => {
     return async (req, res) => {
         try {
@@ -53,13 +53,14 @@ const uploadClassFile = handleFileUpload(1);
 const uploadExamFile = handleFileUpload(0);
 
 
-// 2. Get all plots for a specific course with their file info
+// 2. Get all plots for a specific course
 const getCourseMaterials = async (req, res) => {
     try {
         const { courseId } = req.params;
         const { userId } = req.user;
 
-        console.log(`Fetching materials for courseId: ${courseId}, userId: ${userId}`);
+        // console.log(`Fetching materials for courseId: ${courseId}, userId: ${userId}`);
+
         // 1. Verify enrollment
         const enrollmentCheck = await pool.query(
             'SELECT section FROM student_course WHERE student_id = $1 AND course_id = $2',
@@ -129,20 +130,168 @@ const getCourseMaterials = async (req, res) => {
 };
 
 
+// Get all exam resources for a specific course
+const getExamCourseMaterials = async (req, res) => {
+    try {
+        const { courseId } = req.params;
+        const { userId } = req.user;
+
+        // 1. Verify enrollment (Same as Class Resources)
+        const enrollmentCheck = await pool.query(
+            'SELECT section FROM student_course WHERE student_id = $1 AND course_id = $2',
+            [userId, courseId]
+        );
+
+        if (enrollmentCheck.rows.length === 0) {
+            return res.status(403).json({ success: false, message: 'Not enrolled in this course' });
+        }
+
+        const section = enrollmentCheck.rows[0].section;
+
+        // 2. Query for Exams
+        // Note: I'm assuming 'exam_plots' is your table name and 'is_plot_class = 0' identifies exams.
+        // Adjust 'uf.is_plot_class = 0' if your flag for exams is different.
+        const query = `
+            SELECT 
+                ep.id as exam_id,
+                ep.date,
+                uf.id as file_id,
+                uf.file_name,
+                uf.uploaded_at
+            FROM exam_plots ep
+            LEFT JOIN uploaded_files uf ON ep.id = uf.plot_id AND uf.is_plot_class = 0
+            WHERE ep.course_id = $1 AND ep.section = $2
+            ORDER BY ep.date DESC, uf.uploaded_at ASC;
+        `;
+
+        const result = await pool.query(query, [courseId, section]);
+
+        // 3. Grouping rows by Exam ID
+        const examsMap = {};
+
+        result.rows.forEach(row => {
+            if (!examsMap[row.exam_id]) {
+                examsMap[row.exam_id] = {
+                    id: row.exam_id, // Matches the 'id' key used in frontend
+                    date: row.date,
+                    files: []
+                };
+            }
+
+            if (row.file_id) {
+                examsMap[row.exam_id].files.push({
+                    file_id: row.file_id,
+                    file_name: row.file_name,
+                    uploaded_at: row.uploaded_at
+                });
+            }
+        });
+
+        const formattedExams = Object.values(examsMap);
+
+        res.status(200).json({
+            success: true,
+            course_id: courseId,
+            section: section,
+            exams: formattedExams // Key matches 'data.exams' in the frontend
+        });
+
+    } catch (error) {
+        console.error('Fetch Exam Materials Error:', error);
+        res.status(500).json({ success: false, message: 'Server error fetching exam materials' });
+    }
+};
+
+const getClassPlot = async (req, res) => {
+    try {
+        const { classScheduleId } = req.params;
+        const { userId } = req.user; 
+
+        // console.log(`Fetching class plot for classScheduleId: ${classScheduleId}, userId: ${userId}`);
+
+        const scheduleRes = await pool.query(
+            `SELECT course_id,
+                    UPPER(section) as section,
+                    date
+            FROM class_schedule WHERE id = $1`, 
+            [classScheduleId]
+        );
+
+        if (scheduleRes.rows.length === 0) {
+            return res.status(404).json({ success: false, message: 'Class schedule not found' });
+        }
+
+        const { course_id, section, date } = scheduleRes.rows[0];
+
+        const enrollmentCheck = await pool.query(
+            'SELECT section FROM student_course WHERE student_id = $1 AND course_id = $2',
+            [userId, course_id]
+        );
+
+        if (enrollmentCheck.rows.length === 0) {
+            return res.status(403).json({ success: false, message: 'Not enrolled in this course' });
+        }
+
+        const query = `
+            SELECT 
+                cp.id as plot_id,
+                cp.date,
+                uf.id as file_id,
+                uf.file_name,
+                uf.uploaded_at
+            FROM class_plots cp
+            LEFT JOIN uploaded_files uf
+            ON cp.id = uf.plot_id AND uf.is_plot_class = 1
+            WHERE cp.course_id = $1 AND cp.section = $2 AND cp.date = $3
+        `;
+
+        const result = await pool.query(query, [course_id, section, date]);
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ success: false, message: 'Class plot not found' });
+        }
+
+        const plotData = {
+            plot_id: result.rows[0].plot_id,
+            date: result.rows[0].date,
+            files: []
+        };
+
+        result.rows.forEach(row => {
+            if (row.file_id) {
+                plotData.files.push({
+                    file_id: row.file_id,
+                    file_name: row.file_name,
+                    uploaded_at: row.uploaded_at
+                });
+            }
+        });
+
+        res.status(200).json({
+             success: true,
+             plot: plotData 
+        });
+
+    } catch (error) {
+        console.error("Error in getClassPlot:", error);
+        res.status(500).json({ success: false, message: 'Server Error' });
+    }
+};
+
+
 const getExamPlot = async (req, res) => {
     try {
-        const { examId } = req.params;
+        const { examScheduleId } = req.params;
         const { userId } = req.user; // From authMiddleware
 
-        console.log(`Fetching exam plot for examId: ${examId}, userId: ${userId}`);
+        console.log(`Fetching exam plot for examScheduleId: ${examScheduleId}, userId: ${userId}`);
 
-        // 1. Get Schedule details
         const scheduleRes = await pool.query(
             `SELECT course_id,
                     section,
                     date
             FROM exam_schedule WHERE id = $1`, 
-            [examId]
+            [examScheduleId]
         );
 
         if (scheduleRes.rows.length === 0) {
@@ -163,7 +312,6 @@ const getExamPlot = async (req, res) => {
         }
 
 
-        // 2. Simple JOIN query (Multiple rows if multiple files exist)
         const query = `
             SELECT 
                 ep.id as plot_id,
@@ -183,7 +331,6 @@ const getExamPlot = async (req, res) => {
             return res.status(404).json({ success: false, message: 'Plot not found' });
         }
 
-        // 3. Manual Grouping in JavaScript
         const plotData = {
             plot_id: result.rows[0].plot_id,
             date: result.rows[0].date,
@@ -213,7 +360,7 @@ const getExamPlot = async (req, res) => {
 };
 
 
-// 3. Download/View the actual file
+// Download/View the actual file
 const downloadFile = async (req, res) => {
     try {
         const { fileId } = req.params;
@@ -245,6 +392,8 @@ module.exports = {
     uploadClassFile,
     uploadExamFile,
     getCourseMaterials, 
+    getExamCourseMaterials,
+    getClassPlot,
     getExamPlot,
     downloadFile
 };

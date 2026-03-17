@@ -27,7 +27,7 @@ const login = async (req, res) => {
 
     if (studentResult.rows.length > 0) {
       user = studentResult.rows[0];
-      role = 'student';
+      role = user.role.toLowerCase() === 'cr' ? 'cr' : 'student'; // Distinguish between CR and regular student
     } else {
       // Check teacher table
       const teacherQuery = `
@@ -51,17 +51,17 @@ const login = async (req, res) => {
       });
     }
 
-    // Generate JWT token
+    //JWT token
     const token = jwt.sign(
       { 
-        userId: role === 'student' ? user.student_id : user.teacher_id,
+        userId: role === 'teacher' ? user.teacher_id : user.student_id,
         role: role 
       },
       process.env.JWT_SECRET,
       { expiresIn: '24h' }
     );
 
-    // Remove password from response
+    // Removing password from response
     delete user.password;
 
     return res.status(200).json({
@@ -69,12 +69,12 @@ const login = async (req, res) => {
       message: 'Login successful',
       token: token,
       user: {
-        id: role === 'student' ? user.student_id : user.teacher_id,
-        name: role === 'student' ? user.stu_name : user.teacher_name,
+        id: (role === 'student' || role==='cr') ? user.student_id : user.teacher_id,
+        name:  (role === 'student' || role==='cr')? user.stu_name : user.teacher_name,
         role: role,
         department: user.department_name,
         departmentCode: user.dept_code,
-        ...(role === 'student' && {
+        ...( (role === 'student' || role==='cr') && {
           level: user.level,
           term: user.term,
           studentRole: user.role

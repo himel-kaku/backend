@@ -242,3 +242,101 @@ CREATE TABLE uploaded_files (
     (17, 15001), -- CHEM-113 taught by Dr. Marie Curie
     (18, 15002); -- CHEM-118 taught by Mr. Jalal Bepari
 
+
+-- student course for level 2, term 1 cse 
+    INSERT INTO student_course (student_id, course_id, section)
+    SELECT s.student_id, c.id, 'A'
+    FROM student s
+    JOIN course c 
+    ON c.course_code IN (
+            'CSE-205','CSE-206','CSE-207','CSE-208',
+            'CSE-215','CSE-216','EEE-263','EEE-264','MATH-241'
+        )
+    WHERE s.level = 2 
+    AND s.term = 1;
+
+--- create class routine 
+DO $$
+DECLARE
+    d DATE;
+BEGIN
+    FOR d IN
+        SELECT gs::date
+        FROM generate_series(CURRENT_DATE, CURRENT_DATE + 6, interval '1 day') AS gs
+    LOOP
+
+        ----------------------------------------------------------------
+        -- SATURDAY (6)
+        ----------------------------------------------------------------
+        IF EXTRACT(DOW FROM d)=6 THEN
+
+            INSERT INTO class_schedule(course_id,section,date,start_time,end_time,building_name,room)
+            VALUES
+            (5,'B',d,'10:00','11:00','Academic','206'),
+            (9,'B',d,'11:00','12:00','Academic','206'),
+            (7,'B',d,'12:00','13:00','Academic','206'),
+            (6,'B1',d,'14:00','16:00','Academic','DL'),
+            (6,'B2',d,'14:00','16:00','Academic','WNL');
+
+        END IF;
+
+        ----------------------------------------------------------------
+        -- SUNDAY (0)
+        ----------------------------------------------------------------
+        IF EXTRACT(DOW FROM d)=0 THEN
+
+            INSERT INTO class_schedule(course_id,section,date,start_time,end_time,building_name,room)
+            VALUES
+            (9,'B',d,'08:00','09:00','Academic','206'),
+            (11,'B',d,'09:00','10:00','Academic','203'),
+            (14,'B',d,'10:00','11:00','Academic','206'),
+            (6,'B1',d,'11:00','13:00','Academic','IL'),
+            (6,'B2',d,'11:00','13:00','Academic','DL');
+
+        END IF;
+
+        ----------------------------------------------------------------
+        -- MONDAY (1)
+        ----------------------------------------------------------------
+        IF EXTRACT(DOW FROM d)=1 THEN
+
+            INSERT INTO class_schedule(course_id,section,date,start_time,end_time,building_name,room)
+            VALUES
+            (9,'B',d,'09:00','10:00','Academic','203'),
+            (7,'B',d,'10:00','11:00','Academic','206'),
+            (11,'B',d,'11:00','12:00','Academic','206'),
+            (14,'B',d,'12:00','13:00','Academic','206'),
+            (5,'B1',d,'14:00','16:00','Academic','DBL'),
+            (5,'B2',d,'14:00','16:00','Academic','VDAL');
+
+        END IF;
+
+        ----------------------------------------------------------------
+        -- TUESDAY (2)
+        ----------------------------------------------------------------
+        IF EXTRACT(DOW FROM d)=2 THEN
+
+            INSERT INTO class_schedule(course_id,section,date,start_time,end_time,building_name,room)
+            VALUES
+            (5,'B',d,'09:00','10:00','Academic','203'),
+            (7,'B',d,'10:00','11:00','Academic','206'),
+            (14,'B',d,'11:00','12:00','Academic','206');
+
+        END IF;
+
+        ----------------------------------------------------------------
+        -- WEDNESDAY (3)
+        ----------------------------------------------------------------
+        IF EXTRACT(DOW FROM d)=3 THEN
+
+            INSERT INTO class_schedule(course_id,section,date,start_time,end_time,building_name,room)
+            VALUES
+            (11,'B',d,'09:00','10:00','Academic','205'),
+            (5,'B',d,'10:00','11:00','Academic','205'),
+            (12,'B1',d,'11:00','13:00','Academic','OEL'),
+            (12,'B2',d,'11:00','13:00','Academic','NCL');
+
+        END IF;
+
+    END LOOP;
+END $$;
