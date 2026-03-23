@@ -12,7 +12,7 @@ const PORT = process.env.PORT || 3000;
 
 // Middleware
 app.use(cors({
-  origin: "https://frontend-lru8.vercel.app/",
+  origin: "https://frontend-lru8.vercel.app",
   credentials: true
 }));
 app.use(express.json());
